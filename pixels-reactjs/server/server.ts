@@ -1,7 +1,11 @@
 import "dotenv/config";
-import express from 'express';
-import type { Request, Response } from 'express';
+import express from "express";
+import type { Request, Response } from "express";
 import cors from "cors";
+import "dotenv/config";
+import connectDB from "./configs/db.js";
+
+await connectDB()
 
 const app = express();
 
@@ -10,10 +14,10 @@ app.use(express.json());
 
 const port = process.env.PORT || 3000;
 
-app.get('/', (req: Request, res: Response) => {
-    res.send('Server is Live!');
+app.get("/", (req: Request, res: Response) => {
+  res.send("Server is Live!");
 });
 
 app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
+  console.log(`Server is running at http://localhost:${port}`);
 });
