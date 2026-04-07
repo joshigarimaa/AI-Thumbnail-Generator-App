@@ -13,15 +13,20 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "connect-mongo": "~6.0.0",
     "cors": "~2.8.6",
     "dotenv": "~17.4.1",
     "express": "~5.2.1",
     "mongoose": "~9.4.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "~6.0.0",
     "@types/cors": "~2.8.19",
     "@types/express": "~5.0.6",
+    "@types/express-session": "~1.18.2",
     "@types/node": "~25.5.2",
+    "bcrypt": "~6.0.0",
+    "express-session": "~1.19.0",
     "nodemon": "~3.1.14",
     "ts-node": "~10.9.2",
     "tsx": "~4.21.0",
