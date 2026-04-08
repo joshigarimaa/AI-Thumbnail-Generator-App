@@ -5,6 +5,8 @@ import connectDB from "./configs/db.js";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import AuthRouter from "./routes/authRoutes.js";
+import ThumbnailRouter from "./routes/ThumbnailRoutes.js";
+import UserRouter from "./routes/UserRoute.js";
 
 declare module "express-session" {
   interface SessionData {
@@ -13,21 +15,16 @@ declare module "express-session" {
   }
 }
 
-
 await connectDB();
 
 const app = express();
-
-
 app.use(express.json());
-
 app.use(
   cors({
     origin: ["http://localhost:5173", "http://localhost:3000"],
     credentials: true,
   })
 );
-
 app.use(
   session({
     secret: process.env.SESSION_SECRET as string,
@@ -43,20 +40,14 @@ app.use(
     }),
   })
 );
-
-
 app.get("/", (req: Request, res: Response) => {
   res.send("Server is Live!");
 });
-
 app.use("/api/auth", AuthRouter);
+app.use('/api/thumbnail',ThumbnailRouter)
+app.use('/api/user',UserRouter)
 
-
-
-
-const port = Number(process.env.PORT) || 3000;
-
-
+const port = Number(process.env.PORT) || 3009;
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });

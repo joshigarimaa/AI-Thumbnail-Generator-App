@@ -1,9 +1,50 @@
 import { Request, Response } from "express";
 import ThumbnailModel from "../models/ThumbnailModel.js";
+import { v2 as cloudinary } from "cloudinary";
+import {
+  GenerateContentConfig,
+  HarmBlockThreshold,
+  HarmCategory,
+} from "@google/genai";
+import ai from "../configs/ai.js";
+import path from "path";
+import fs from "fs";
+
+const stylePrompts = {
+  "Bold & Graphic":
+    "eye-catching thumbnail, bold typography,vibrant colors, expressive facial reaction,dramatic lighting,high contrast,click-worthy composition,professional style",
+  "Tech/Futuristic":
+    "futuristic thumbnail,sleek modern design,digital UI elements,glowing accents,holographic effects, cyber-tech aesthetic , sharp lighting, high-tech atmosphere",
+  Minimalist:
+    "minimalist thumbnail,clean layout ,simple shapes,limited color palette, plenty of negative space,modern flat design,clear focal point",
+  Photorealistic:
+    "photorealistic thumbnail,ultra realistic lighting,natural skin tones,candid moment,DSLR-style photography,lifestyle realism,shallow depth of field",
+  Illustrated:
+    "illustrated thumbnail,custom digital illustration,stylized characters,bold outlines ,vibrant colors,creative cartoon or vector art style",
+};
+
+const colorSchemeDescription = {
+  vibrant:
+    "vibrant and energetic colors,high saturation,bold contrasts,eye-catching palette",
+  sunset:
+    "warm sunset tones, orange pink and purple hues,soft gradients,cinematic glow",
+  forest:
+    "natural green tones,earthy colors,calm and organic palette,fresh atmosphere",
+  neon: "neon glow effects,electric blues and pinks,cyberpunk lighting,high contrast glow",
+  purple:
+    "purple-dominant color palette,magenta and violet tones,modern and stylish mood",
+  monochrome:
+    "black and white color scheme,high contrast,dramatic lighting,timeless aesthetic",
+  ocean:
+    "cool blue and teal tones , aquatic color palette,fresh and clean atmosphere",
+  pastel:
+    "soft pastel colors,low saturation,gentle tones,calm and friendly aesthetic",
+};
 
 export const generateThumbnail = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.session;
+    const userId = (req.session as any)?.userId;
+
     const {
       title,
       prompt: user_prompt,
@@ -13,15 +54,122 @@ export const generateThumbnail = async (req: Request, res: Response) => {
       text_overlay,
     } = req.body;
 
-    const thumbnail = await ThumbnailModel({
+    const thumbnail = new ThumbnailModel({
       userId,
       title,
-      prompt_used: user_prompt,
+      user_prompt,
       style,
       aspect_ratio,
       color_scheme,
       text_overlay,
       isGenerating: true,
     });
-  } catch (error) {}
+
+    const model = "gemini-3-pro-image-preview";
+    const generationConfig: GenerateContentConfig = {
+      maxOutputTokens: 32768,
+      temperature: 1,
+      topP: 0.95,
+      responseModalities: ["IMAGE"],
+      imageConfig: {
+        aspectRatio: aspect_ratio || "16:9",
+        imageSize: "1K",
+      },
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.OFF,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.OFF,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.OFF,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.OFF,
+        },
+      ],
+    };
+
+    let prompt = `Create a ${
+      stylePrompts[style as keyof typeof stylePrompts]
+    } for: "${title}"`;
+
+    if (color_scheme) {
+      prompt += ` Use a ${
+        colorSchemeDescription[
+          color_scheme as keyof typeof colorSchemeDescription
+        ]
+      } color scheme`;
+    }
+
+    if (user_prompt) {
+      prompt += ` Additional details: ${user_prompt}`;
+    }
+
+    prompt += ` The thumbnail should be ${aspect_ratio}, visually stunning,and designed to maximize click-through rate. Make it bold, professional, and impossible to ignore`;
+
+    const response: any = await ai.models.generateContent({
+      model,
+      contents: [prompt],
+      config: generationConfig,
+    });
+
+    if (!response?.candidates?.[0]?.content?.parts) {
+      throw new Error("Unexpected response");
+    }
+
+    const parts = response.candidates[0].content.parts;
+    let finalBuffer: Buffer | null = null;
+
+    for (const part of parts) {
+      if (part.inlineData) {
+        finalBuffer = Buffer.from(part.inlineData.data, "base64");
+      }
+    }
+
+    if (!finalBuffer) {
+      throw new Error("No image data received from AI");
+    }
+
+    const fileName = `final-output-${Date.now()}.png`;
+    const filePath = path.join("images", fileName);
+
+    fs.mkdirSync("images", { recursive: true });
+    fs.writeFileSync(filePath, finalBuffer);
+
+    const uploadResult = await cloudinary.uploader.upload(filePath, {
+      resource_type: "image",
+    });
+
+    thumbnail.image_url = uploadResult.url;
+    thumbnail.isGenerating = false;
+
+    await thumbnail.save();
+
+    res.json({
+      message: "Thumbnail generation started",
+      thumbnail,
+    });
+    fs.unlinkSync(filePath);
+  } catch (error: any) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteThumbnail = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.session as any)?.userId;
+    await ThumbnailModel.findOneAndDelete({ _id: id, userId });
+    res.json({ message: "Thumbnail deleted successfully" });
+  } catch (error: any) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
+  }
 };
