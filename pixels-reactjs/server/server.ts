@@ -25,6 +25,22 @@ app.use(
     credentials: true,
   })
 );
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET as string,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       maxAge: 1000 * 60 * 60 * 24 * 7,
+//       httpOnly: true,
+//     },
+//     store: MongoStore.create({
+//       mongoUrl: process.env.MONGODB_URI as string,
+//       collectionName: "sessions",
+//     }),
+//   })
+// );
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET as string,
@@ -33,6 +49,8 @@ app.use(
     cookie: {
       maxAge: 1000 * 60 * 60 * 24 * 7,
       httpOnly: true,
+      sameSite: "lax",
+      secure: false,
     },
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI as string,

@@ -18,16 +18,19 @@ const PreviewPanel = ({
 
   const onDownload = () => {
     if (!thumbnail?.image_url) return;
-    window.open(thumbnail.image_url, "_blank");
+    const link = document.createElement("a");
+    link.href = thumbnail?.image_url.replace(
+      "/upload",
+      "/upload/fl_attachment",
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   return (
     <div className="relative mx-auto w-full max-w-2xl">
-      <div
-        className={`relative overflow-hidden ${
-          aspectClasses[aspectRatio]
-        }`}
-      >
+      <div className={`relative overflow-hidden ${aspectClasses[aspectRatio]}`}>
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/25">
             <Loader2Icon className="size-8 animate-spin text-zinc-400" />
@@ -68,9 +71,7 @@ const PreviewPanel = ({
               <ImageIcon className="size-10 text-white opacity-50" />
             </div>
             <div className="px-4 text-center">
-              <p className="text-zinc-200">
-                Generate your first thumbnail
-              </p>
+              <p className="text-zinc-200">Generate your first thumbnail</p>
               <p className="mt-1 text-xs text-zinc-400">
                 Fill out the form and click Generate
               </p>
