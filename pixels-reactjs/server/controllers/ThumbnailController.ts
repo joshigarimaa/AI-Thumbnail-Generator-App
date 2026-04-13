@@ -90,17 +90,12 @@ export const generateThumbnail = async (req: Request, res: Response) => {
 export const deleteThumbnail = async (req: Request, res: Response) => {
   try {
     const userId = (req.session as any)?.userId;
-
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
     const { id } = req.params;
-
     await ThumbnailModel.findOneAndDelete({ _id: id, userId });
-
     return res.json({ message: "Thumbnail deleted successfully" });
-
   } catch (error: any) {
     console.log("DELETE ERROR:", error?.message || error);
 
